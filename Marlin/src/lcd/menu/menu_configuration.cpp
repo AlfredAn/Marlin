@@ -49,12 +49,19 @@
   #include "../../libs/buzzer.h"
 #endif
 
+#include "../../module/planner.h"
+
 #define HAS_DEBUG_MENU ENABLED(LCD_PROGRESS_BAR_TEST)
 
 void menu_advanced_settings();
 #if EITHER(DELTA_CALIBRATION_MENU, DELTA_AUTO_CALIBRATION)
   void menu_delta_calibrate();
 #endif
+
+void menu_advanced_velocity();
+void menu_advanced_acceleration();
+void menu_advanced_jerk();
+void menu_advanced_steps_per_mm();
 
 #if ENABLED(LCD_PROGRESS_BAR_TEST)
 
@@ -481,12 +488,36 @@ void menu_configuration() {
     }
   #endif
 
-  SUBMENU(MSG_ADVANCED_SETTINGS, menu_advanced_settings);
-
   #if ENABLED(BABYSTEP_ZPROBE_OFFSET)
     SUBMENU(MSG_ZPROBE_ZOFFSET, lcd_babystep_zoffset);
   #elif HAS_BED_PROBE
     EDIT_ITEM(LCD_Z_OFFSET_TYPE, MSG_ZPROBE_ZOFFSET, &probe.offset.z, Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX);
+  #endif
+
+  // M203 / M205 - Feedrate items
+  SUBMENU(MSG_VELOCITY, menu_advanced_velocity);
+
+  // M201 - Acceleration items
+  SUBMENU(MSG_ACCELERATION, menu_advanced_acceleration);
+
+  #if HAS_CLASSIC_JERK
+    // M205 - Max Jerk
+    SUBMENU(MSG_JERK, menu_advanced_jerk);
+  #elif HAS_JUNCTION_DEVIATION
+    EDIT_ITEM(float43, MSG_JUNCTION_DEVIATION, &planner.junction_deviation_mm, 0.001f, 0.3f
+      OPTARG(LIN_ADVANCE, planner.recalculate_max_e_jerk)
+    );
+  #endif
+
+  // M92 - Steps Per mm
+  if (!busy)
+    SUBMENU(MSG_STEPS_PER_MM, menu_advanced_steps_per_mm);
+
+  #if EXTRUDERS == 1
+    EDIT_ITEM(float42_52, MSG_ADVANCE_K, &planner.extruder_advance_K[0], 0, 10);
+  #elif HAS_MULTI_EXTRUDER
+    LOOP_L_N(n, E_STEPPERS)
+      EDIT_ITEM_N(float42_52, n, MSG_ADVANCE_K_E, &planner.extruder_advance_K[n], 0, 10);
   #endif
 
   //
@@ -543,13 +574,13 @@ void menu_configuration() {
   #endif
 
   #if ENABLED(POWER_LOSS_RECOVERY)
-    EDIT_ITEM(bool, MSG_OUTAGE_RECOVERY, &recovery.enabled, recovery.changed);
+    //EDIT_ITEM(bool, MSG_OUTAGE_RECOVERY, &recovery.enabled, recovery.changed);
   #endif
 
   // Preheat configurations
   #if PREHEAT_COUNT && DISABLED(SLIM_LCD_MENUS)
     LOOP_L_N(m, PREHEAT_COUNT)
-      SUBMENU_N_S(m, ui.get_preheat_label(m), MSG_PREHEAT_M_SETTINGS, _menu_configuration_preheat_settings);
+      //SUBMENU_N_S(m, ui.get_preheat_label(m), MSG_PREHEAT_M_SETTINGS, _menu_configuration_preheat_settings);
   #endif
 
   #if ENABLED(SOUND_MENU_ITEM)
@@ -562,6 +593,8 @@ void menu_configuration() {
   #endif
 
   if (!busy) ACTION_ITEM(MSG_RESTORE_DEFAULTS, ui.reset_settings);
+
+  SUBMENU(MSG_ADVANCED_SETTINGS, menu_advanced_settings);
 
   END_MENU();
 }

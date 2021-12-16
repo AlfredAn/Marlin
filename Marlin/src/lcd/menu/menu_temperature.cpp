@@ -43,6 +43,12 @@
   #include "../../module/tool_change.h"
 #endif
 
+#if BOTH(AUTOTEMP, HAS_TEMP_HOTEND) || EITHER(PID_AUTOTUNE_MENU, PID_EDIT_MENU)
+  #define SHOW_MENU_ADVANCED_TEMPERATURE 1
+#endif
+
+void menu_advanced_temperature();
+
 //
 // "Temperature" submenu items
 //
@@ -164,6 +170,20 @@ void menu_temperature() {
   START_MENU();
   BACK_ITEM(MSG_MAIN);
 
+  #if PREHEAT_COUNT
+    //
+    // Preheat for all Materials
+    //
+    LOOP_L_N(m, PREHEAT_COUNT) {
+      editable.int8 = m;
+      #if HOTENDS > 1 || HAS_HEATED_BED
+        SUBMENU_S(ui.get_preheat_label(m), MSG_PREHEAT_M, menu_preheat_m);
+      #elif HAS_HOTEND
+        ACTION_ITEM_S(ui.get_preheat_label(m), MSG_PREHEAT_M, do_preheat_end_m);
+      #endif
+    }
+  #endif
+
   //
   // Nozzle:
   // Nozzle [1-5]:
@@ -262,26 +282,16 @@ void menu_temperature() {
 
   #endif // HAS_FAN
 
-  #if PREHEAT_COUNT
-    //
-    // Preheat for all Materials
-    //
-    LOOP_L_N(m, PREHEAT_COUNT) {
-      editable.int8 = m;
-      #if HOTENDS > 1 || HAS_HEATED_BED
-        SUBMENU_S(ui.get_preheat_label(m), MSG_PREHEAT_M, menu_preheat_m);
-      #elif HAS_HOTEND
-        ACTION_ITEM_S(ui.get_preheat_label(m), MSG_PREHEAT_M, do_preheat_end_m);
-      #endif
-    }
-  #endif
-
   #if HAS_TEMP_HOTEND || HAS_HEATED_BED
     //
     // Cooldown
     //
     if (TERN0(HAS_HEATED_BED, thermalManager.degTargetBed())) has_heat = true;
     if (has_heat) ACTION_ITEM(MSG_COOLDOWN, lcd_cooldown);
+  #endif
+
+  #if SHOW_MENU_ADVANCED_TEMPERATURE
+    SUBMENU(MSG_PID, menu_advanced_temperature);
   #endif
 
   END_MENU();
